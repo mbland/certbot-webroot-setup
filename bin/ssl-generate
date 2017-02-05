@@ -1,0 +1,6 @@
+#! /usr/bin/env bash
+#
+# Generates SSL keys, hashes, and Certificate Signing Requests
+
+. "$_GO_USE_MODULES" 'subcommands'
+@go.show_subcommands

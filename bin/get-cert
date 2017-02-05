@@ -1,0 +1,71 @@
+#! /usr/bin/env bash
+#
+# Requests and installs a certificate for the specified site
+#
+# Usage:
+#   {{go}} {{cmd}} [-c config] <site_name> <cert_id>
+#
+# Where:
+#   -c config    Alternate certbot configuration file
+#   <site_name>  Primary hostname for your web site 
+#   <cert_id>    Name of the CSR file without directory or `.csr` extension
+
+_cws.get_cert() {
+  local site_name
+  local site_dir
+  local cert_id
+  local config_path="$CERTBOT_HOME/.config/letsencrypt/cli.ini"
+  local csr
+  local opt
+
+  while getopts 'c:' opt; do
+    case "$opt" in
+    c)
+      config_path="$OPTARG"
+      if ! _cws.check_file_accessible 'Config' "$config_path"; then
+        return 1
+      fi
+      ;;
+    ?)
+      return 1
+      ;;
+    esac
+  done
+
+  site_name="${!OPTIND}"
+  shift "$OPTIND"
+  OPTIND='0'
+
+  if [[ -z "$site_name" ]]; then
+    printf 'No site name given.\n' >&2
+    return 1
+  fi
+
+  site_dir="$CERTBOT_HOME/certs/$site_name"
+
+  if [[ ! -d "$site_dir" ]]; then
+    @go.printf '%s' "$site_dir not yet created; " \
+      "please run `$_GO_CMD site-setup`, then try again."$'\n' >&2
+    return 1
+  fi
+
+  cert_id="$1"
+  if [[ -z "$cert_id" ]]; then
+    @go.printf 'Assuming certificate file name is also %s.\n' "$site_name"
+    cert_id="$site_name"
+  fi
+
+  csr="$cert_dir/${cert_id}.csr"
+
+  if ! _cws.check_file_accessible 'Certificate Signing Request' "$csr"; then
+    return 1
+  fi
+
+  letsencrypt certonly -c "$config_path" --csr "$csr" \
+    --cert-path "$cert_dir/${cert_id}.crt" \
+    --chain-path "$cert_dir/${cert_id}.chain.pem" \
+    --fullchain-path "$cert_dir/${cert_id}.fullchain.pem" \
+    "${CERTBOT_GET_CERT_STAGING}" "$@"
+}
+
+_cws.get_cert "$@"

@@ -1,0 +1,93 @@
+#! /usr/bin/env bash
+#
+# Creates `certbot` home directories and the `certbot` configuration file
+
+_cws.setup_homedir() {
+  if [[ ! -d "$CERTBOT_HOME" ]]; then
+    @go certbot-setup add-certbot-user
+    return
+  elif ! sudo chmod 750 "$CERTBOT_HOME"; then
+    return 1
+  elif ! _cws.create_certbot_home_dirs; then
+    return 1
+  elif ! _cws.create_certbot_config; then
+    return 1
+  elif ! sudo chown -R certbot:certbot "$CERTBOT_HOME"; then
+    return 1
+  fi
+}
+
+_cws.create_certbot_home_dirs() {
+  local try_dirs=("$CERTBOT_HOME/"{.config,certs,challenges,config,logs}
+    "${CERTBOT_CONFIG%/*}")
+  local certbot_dirs=()
+  local try_dir
+
+  for try_dir in "${try_dirs[@]}"; do
+    if [[ ! -d "$try_dir" ]]; then
+      certbot_dirs+=("$try_dir")
+    fi
+  done
+
+  if [[ "${#certbot_dirs[@]}" -eq '0' ]]; then
+    return
+  fi
+
+  @go.printf 'Creating the following directories:\n'
+  @go.printf '  %s\n' "${certbot_dirs[@]}"
+
+  if ! sudo mkdir -m 750 "${certbot_dirs[@]}"; then
+    return 1
+  fi
+}
+
+_cws.create_certbot_config() {
+  local config_template=()
+  local key_size
+  local email_address
+
+  @go.printf "Creating certbot configuration at $CERTBOT_CONFIG..."
+  @go.printf "What RSA key size would you like to use? (default: %d) > " \
+    "$CERTBOT_RSA_KEY_SIZE" >&2
+  read key_size
+
+  if [[ -z "$key_size" ]]; then
+    @go.printf 'Using default RSA key size %d.\n\n' "$CERTBOT_RSA_KEY_SIZE" >&2
+    key_size="$CERTBOT_RSA_KEY_SIZE"
+  fi
+  if [[ ! "$key_size" =~ [1-9][0-9]+ ]]; then
+    @go.printf 'The RSA key size must be a positive integer. Aborting.\n' >&2
+    return 1
+  fi
+
+  @go.printf "What email address would you like to use? > " >&2
+  read email_address
+
+  if [[ -z "$email_address" ]]; then
+    @go.printf 'No email address specified. Aborting.\n' &2
+    return 1
+  elif [[ ! "$email_address" =~ ^[^@]+@[^@]+$ ]]; then
+    @go.printf -- '%s is not a valid email address. Aborting.\n' \
+      "$email_address" >&2
+    return 1
+  fi
+
+  config_template=("rsa-key-size = $key_size"
+    "email = $email_address"
+    'text = True'
+    'non-interactive = True'
+    'agree-tos = True'
+    'authenticator = webroot'
+    "work-dir = $CERTBOT_HOME"
+    "config-dir = $CERTBOT_HOME/config"
+    "logs-dir = $CERTBOT_HOME/logs"
+  )
+
+  if ! sudo printf '%s\n' -- "${config_template[@]}" >"$CERTBOT_CONFIG"; then
+    return 1
+  elif ! sudo chmod 600 certbot "$CERTBOT_CONFIG"; then
+    return 1
+  fi
+}
+
+_cws.setup_homedir

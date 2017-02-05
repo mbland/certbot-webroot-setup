@@ -1,0 +1,125 @@
+#! /usr/bin/env bash
+#
+# Generates or updates an OpenSSL configuration for creating CSRs
+
+_cws.config_openssl() {
+  local openssl_config_file="$1"
+  local common_name="$2"
+  local email_address="$3"
+  local alt_names=("$common_name" "${@:4}")
+  local openssl_config=()
+  local begin_state_pattern='^\[ ([a-z0-9_]+) \]$'
+  local state
+  local req_extensions_set
+  local cn_default_set
+  local email_default_set
+  local v3_req_defined
+  local subject_alt_name_set
+  local alt_names_defined
+  local line
+
+  if ! _cws.check_has_openssl; then
+    return 1
+  elif [[ ! -f "$openssl_config_file" ]]; then
+    if ! cp /etc/ssl/openssl.cnf "$openssl_config_file"; then
+      return 1
+    fi
+  fi
+
+  while IFS= read -r line; do
+    line="${line%$'\r'}"
+    if [[ -n "$line" ]]; then
+      case "$state" in
+      '')
+        if [[ "$line" =~ $begin_state_pattern ]]; then
+          state="${BASH_REMATCH[1]}"
+        fi
+        ;;
+      req)
+        if [[ "$line" =~ req_extensions\ =\ v3_req ]]; then
+          if [[ "${line:0:1}" == '#' ]]; then
+            line="${line:1}"
+          fi
+          req_extensions_set='true'
+        fi
+        ;;
+      req_distinguished_name)
+        if [[ "$line" =~ commonName_default ]]; then
+          line="commonName_default = $common_name"
+          cn_default_set='true'
+        elif [[ "$line" =~ emailAddress_default ]]; then
+          line="emailAddress_default = $email_address"
+          email_default_set='true'
+        fi
+        ;;
+      v3_req)
+        v3_req_defined='true'
+        if [[ "$line" =~ subjectAltName ]]; then
+          line='subjectAltName = @alt_names'
+          subject_alt_name_set='true'
+        fi
+        ;;
+      alt_names)
+        alt_names_defined='true'
+        continue
+        ;;
+      esac
+    else
+      _cws.config_openssl_end_state
+      state=''
+    fi
+    openssl_config+=("$line")
+  done <"$openssl_config_file"
+
+  _cws.config_openssl_finish
+  printf '%s\n' "${openssl_config[@]}" >"$openssl_config_file"
+}
+
+_cws.config_openssl_end_state() {
+  case "$state" in
+  req)
+    if [[ -z "$req_extensions_set" ]]; then
+      openssl_config+=('req_extensions = v3_req')
+    fi
+    ;;
+  req_distinguished_name)
+    if [[ -z "$cn_default_set" ]]; then
+      openssl_config+=("commonName_default = $common_name")
+    fi
+    if [[ -z "$email_default_set" ]]; then
+      openssl_config+=("emailAddress_default = $email_address")
+    fi
+    ;;
+  v3_req)
+    if [[ -z "$subject_alt_name_set" ]]; then
+      openssl_config+=("subjectAltName = @alt_names")
+    fi
+    ;;
+  alt_names)
+    _cws.config_openssl_alt_names
+    ;;
+  esac
+}
+
+_cws.config_openssl_finish() {
+  _cws.config_openssl_end_state
+
+  if [[ -z "$v3_req_defined" ]]; then
+    openssl_config+=('' '[ v3_req ]' 'subjectAltName = @alt_names')
+  fi
+
+  if [[ -z "$alt_names_defined" ]]; then
+    openssl_config+=('' '[ alt_names ]')
+    _cws.config_openssl_alt_names
+  fi
+}
+
+_cws.config_openssl_alt_names() {
+  local i
+
+  for ((i=0; i != ${#alt_names[@]}; ++i)); do
+    openssl_config+=("DNS.$((i + 1)) = ${alt_names[$i]}")
+  done
+}
+
+_cws.config_openssl "$@"

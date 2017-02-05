@@ -1,0 +1,32 @@
+#! /usr/bin/env bash
+#
+# Generates an Nginx SSL configuration for the specified certificate and keys
+
+_cws.webserver_config_nginx() {
+  local __cws_cert_file
+  local __cws_cert_key
+  local __cws_trusted_certs
+  local __cws_hpkp_header
+  local nginx_conf=()
+
+  . "$_GO_USE_MODULES" 'webserver-config'
+  if ! _cws.webserver_config_parse_args "$@"; then
+    return 1
+  fi
+
+  nginx_conf+=("ssl_certificate $__cws_cert_file;"
+    "ssl_certificate_key $__cws_cert_key;")
+
+  if [[ -n "$__cws_trusted_certs" ]]; then
+    nginx_conf+=('ssl_stapling on;'
+      'ssl_stapling_verify on;'
+      "ssl_trusted_certificate $__cws_trusted_certs;")
+  fi
+
+  if [[ -n "$__cws_hpkp_header" ]]; then
+    nginx_conf+=("add_header Public-Key-Pins '$__cws_hpkp_header';")
+  fi
+  printf '%s\n' "${nginx_conf[@]}"
+}
+
+_cws.webserver_config_nginx "$@"

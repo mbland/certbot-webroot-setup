@@ -1,0 +1,30 @@
+#! /usr/bin/env bash
+#
+# Runs all of the `certbot` setup commands
+#
+# Usage:
+#   {{go}} {{cmd}} <site_name>
+#
+# Where:
+#   <site_name>  Canonical host name of your web site
+#
+# This will run all of the following:
+#
+#   {{go}} certbot-setup
+#   {{go}} site-setup
+#   {{go}} get-cert
+#
+# If successful, you can then run {{go}} webserver-config to generate a
+# configuration file for your web server that makes use of the new certificate
+# and associated artifacts.
+
+_cws.setup_all() {
+  if ! @go certbot-setup; then
+    return 1
+  elif ! @go site-setup "$site_name"; then
+    return 1
+  fi
+  @go get-cert "$site_name" "$site_name"
+}
+
+_cws.setup_all "$@"

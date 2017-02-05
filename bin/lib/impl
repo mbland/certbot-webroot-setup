@@ -1,0 +1,87 @@
+#! /usr/bin/env bash
+#
+# Common implementation for {{go}} commands.
+
+export CERTBOT_CMD="${CERTBOT_CMD}"
+export CERTBOT_HOME="${HOME%/*}/certbot"
+export CERTBOT_CONFIG="$CERTBOT_HOME/.config/letsencrypt/cli.ini"
+export CERTBOT_OS=''
+export CERTBOT_OS_DISTRIBUTOR=''
+export CERTBOT_OS_RELEASE=''
+export CERTBOT_RSA_KEY_SIZE='2048'
+export CERTBOT_EC_CURVE_NAME='prime256v1'
+export CERTBOT_HPKP_MAX_AGE='5184000'
+
+_cws.detect_system() {
+  if [[ -n "$CERTBOT_OS" ]]; then
+    return
+  fi
+  CERTBOT_OS="$OSTYPE"
+
+  case "$CERTBOT_OS" in
+  linux-gnu)
+    CERTBOT_OS="Linux"
+    if command -v 'lsb_release' >/dev/null; then
+      CERTBOT_OS_DISTRIBUTOR="$(lsb_release -is)"
+      CERTBOT_OS_RELEASE="$(lsb_release -rs)"
+    fi
+    ;;
+  darwin*)
+    CERTBOT_OS='macOS'
+    ;;
+  esac
+}
+
+_cws.pick_certbot_cmd() {
+  for certbot_cmd in 'certbot' 'letsencrypt' 'certbot-auto'; do
+    if command -v "$certbot_cmd" >/dev/null; then
+      CERTBOT_CMD="$certbot_cmd"
+      return
+    fi
+  done
+  return 1
+}
+
+_cws.check_has_openssl() {
+  if ! command -v openssl >/dev/null; then
+    @go.printf 'Please install OpenSSL on your system and try again.\n' >&2
+    return 1
+  fi
+}
+
+_cws.check_file_accessible() {
+  local file_type="$1"
+  local file_path="$2"
+  local file_desc="$file_type file $file_path"
+
+  if [[ -z "$file_path" ]]; then
+    @go.printf "$file_type file not specified.\n" >&2
+    return 1
+  elif [[ ! -f "$file_path" ]]; then
+    @go.printf "$file_desc doesn't exist or isn't a regular file.\n" >&2
+    return 1
+  elif [[ ! -r "$file_path" ]]; then
+    @go.printf "$file_desc isn't readable.\n" >&2
+    return 1
+  fi
+}
+
+# Prompts the user for a line of input
+#
+# Arguments:
+#   result_var  Name of the caller-declared variable for the result
+#   prompt      Text prompt for user input
+#   fail_msg    Failure message if empty input isn't valid
+_cws.prompt_for_input() {
+  local __cws_pfi_response
+
+  @go.printf '%s\n' "$2" >&2
+  read __cws_pfi_response
+  __cws_pfi_response="${__cws_pfi_response%$'\r'}"
+
+  if [[ -z "$__cws_pfi_response" && "$3" ]]; then
+    @go.printf '%s\n' "$3" >&2
+    return 1
+  fi
+  printf -v "$1" -- '%s' "$__cws_pfi_response"
+}

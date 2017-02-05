@@ -1,0 +1,70 @@
+#! /usr/bin/env bash
+#
+# Installs the certbot program on your system
+
+_cws.install_certbot() {
+  @go.printf 'Attempting to install certbot...\n'
+  _cws.detect_system
+
+  case "$CERTBOT_OS" in
+  Linux)
+    _cws.install_certbot_linux
+    ;;
+  macOS)
+    if ! command -v brew >/dev/null; then
+      @go.printf 'Please install Homebrew from %s and try again.\n' \
+        'http://brew.sh/' >&2
+      return 1
+    fi
+    brew install certbot
+    ;;
+  *)
+    @go.printf '%s' 'Please see https://certbot.eff.org/ for directions for ' \
+      'installing certbot and try again.\n' >&2
+    return 1
+    ;;
+  esac
+
+  if [[ "$?" -ne '0' ]]; then
+    @go.printf '%s\n' 'Failed to install certbot.' \
+      'Please see https://certbot.eff.org/ for specific directions.' >&2
+    return 1
+  fi
+}
+
+_cws.install_certbot_auto() {
+  @go.get https://dl.eff.org/certbot-auto
+  chmod ug+x certbot-auto
+  CERTBOT_CMD='certbot-auto'
+}
+
+_cws.install_certbot_linux() {
+  case "$CERTBOT_OS_DISTRIBUTOR" in
+  Ubuntu)
+    case "$CERTBOT_OS_RELEASE" in
+    16.04)
+      sudo apt-get install letsencrypt
+      CERTBOT_CMD='letsencrypt'
+      ;;
+    16.10)
+      sudo apt-get install certbot
+      CERTBOT_CMD='certbot'
+      ;;
+    *)
+      _cws.install_certbot_auto
+      ;;
+    esac
+    ;;
+  Arch)
+    pacman -S certbot
+    CERTBOT_CMD='certbot'
+    ;;
+  *)
+    @go.printf '%s' "Direct support for $distributor not yet available; " \
+      'attempting to install certbot-auto...\n'
+    _cws.install_certbot_auto
+    ;;
+  esac
+}
+
+_cws.install_certbot

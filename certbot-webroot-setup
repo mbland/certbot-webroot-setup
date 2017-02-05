@@ -1,0 +1,20 @@
+#! /usr/bin/env bash
+
+readonly SCRIPTS_DIR="${0%/*}/bin"
+readonly GO_SCRIPT_CORE="$SCRIPTS_DIR/go-script-bash/go-core.bash"
+readonly GO_SCRIPT_CORE_URL='https://github.com/mbland/go-script-bash.git'
+readonly GO_SCRIPT_CORE_VERSION='master'
+
+if [[ ! -e "$GO_SCRIPT_CORE" ]]; then
+  if ! git clone --depth 1 -c advice.detachedHead=false \
+      -b "$GO_SCRIPT_CORE_VERSION" "$GO_SCRIPT_CORE_URL" \
+      "${GO_SCRIPT_CORE%/*}" &>/dev/null; then
+    printf 'Failed to clone %s; aborting.\n' "$GO_SCRIPT_CORE_URL" >&2
+    exit 1
+  fi
+fi
+
+. "$GO_SCRIPT_CORE" 'bin'
+. "$_GO_USE_MODULES" impl
+
+@go "$@"

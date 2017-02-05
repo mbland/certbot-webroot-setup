@@ -1,0 +1,19 @@
+#! /usr/bin/env bash
+#
+# Installs `certbot` and sets up the `certbot` account
+
+_cws.certbot_setup() {
+  if ! _cws.pick_certbot_cmd; then
+    if ! @go "${_GO_CMD_NAME[@]}" install-certbot; then
+      return 1
+    fi
+  fi
+
+  if [[ ! -d "$CERTBOT_HOME" ]]; then
+    if ! @go "${_GO_CMD_NAME[@]}" setup-homedir; then
+      return 1
+    fi
+  fi
+}
+
+_cws.certbot_setup "$@"

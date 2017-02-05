@@ -1,0 +1,73 @@
+#! /usr/bin/env bash
+#
+# Wraps OpenSSL key generation commands
+#
+# Usage:
+#   {{go}} {{cmd}} <output_file> rsa <key_size> 
+#   {{go}} {{cmd}} <output_file> ec <curve_name> 
+
+_cws.private_key() {
+  local output_file="$1"
+  local encryption="$2"
+  local parameter="$3"
+
+  if ! _cws.check_has_openssl; then
+    return 1
+  elif [[ -z "$output_file" ]]; then
+    @go.printf 'No output file specified; aborting.\n' >&2
+    return 1
+  elif [[ -z "$encryption" ]]; then
+    if ! _cws.prompt_for_input 'encryption' \
+      'Would you like to use "rsa" or "ec" encryption for the private key?' \
+      'No encryption scheme specified; aborting.'; then
+      return 1
+    fi
+    case "$encryption" in
+    rsa)
+      _cws.prompt_for_input 'parameter' \
+        "What key size would you like to use? (default $CERTBOT_RSA_KEY_SIZE)"
+      parameter="${parameter:-$CERTBOT_RSA_KEY_SIZE}"
+      ;;
+    ec)
+      _cws.prompt_for_input 'parameter' \
+        "What curve would you like to use? (default $CERTBOT_EC_CURVE_NAME)"
+      parameter="${parameter:-$CERTBOT_EC_CURVE_NAME}"
+      ;;
+    *)
+      @go.printf '%s is not a valid encryption option; aborting.\n' \
+        "$encryption" >&2
+      return 1
+      ;;
+    esac
+      
+  elif [[ -z "$parameter" ]]; then
+    case "$encryption" in
+    rsa)
+      @go.printf 'No RSA key size specified; defaulting to %d.\n' \
+        "$CERTBOT_RSA_KEY_SIZE"
+      parameter="$CERTBOT_RSA_KEY_SIZE"
+      ;;
+    ec)
+      @go.printf 'No elliptic curve name specified; defaulting to %s.\n' \
+        "$CERTBOT_EC_CURVE_NAME"
+      parameter="$CERTBOT_EC_CURVE_NAME"
+      ;;
+    esac
+  fi
+
+  case "$encryption" in
+  rsa)
+    openssl genrsa -out "$output_file" "$parameter"
+    ;;
+  ec)
+    openssl ecparam -genkey -name "$parameter" >"$output_file"
+    ;;
+  *)
+    @go.printf 'Unsupported encryption scheme for key generation: %s\n' \
+      "$encryption" >&2
+    return 1
+    ;;
+  esac
+}
+
+_cws.private_key "$@"

@@ -1,0 +1,55 @@
+#! /usr/bin/env bash
+#
+# Common behavior for gen-cert-conf subcommands
+
+# Parses the arguments common to all `gen-cert-conf` subcommands.
+#
+# Globals (all caller-declared):
+#   __cws_cert_file
+#   __cws_cert_key
+#   __cws_trusted_certs
+#   __cws_hpkp_header
+_cws.webserver_config_parse_args() {
+  local opt
+  local max_age
+  local hpkp_args=()
+
+  while getopts 'm:t:' opt; do
+    case "$opt" in
+    m)
+      max_age="$OPTARG"
+      hpkp_args+=('-m' "$OPTARG")
+      ;;
+    t)
+      __cws_trusted_certs="$OPTARG"
+      ;;
+    ?)
+      return 1
+      ;;
+    esac
+  done
+
+  shift "$((OPTIND - 1))"
+  OPTIND='0'
+  __cws_cert_file="$1"
+  __cws_cert_key="$2"
+  shift 2
+ 
+  if ! _cws.check_file_accessible 'Certificate' "$__cws_cert_file"; then
+    return 1
+  elif ! _cws.check_file_accessible 'Certificate key' "$__cws_cert_key"; then
+    return 1
+  elif [[ -n "$__cws_trusted_certs" ]] && \
+    ! _cws.check_file_accessible 'Trusted CA certs' "$__cws_trusted_certs"; then
+    return 1
+  fi
+
+  if [[ "${#hpkp_args[@]}" -ne '0' || "$#" -ne '0' ]]; then
+    hpkp_args+=("$__cws_cert_key" "$@")
+    __cws_hpkp_header="$(@go ssl-generate hpkp-header "${hpkp_args[@]}")"
+
+    if [[ "$?" -ne '0' ]]; then
+      return 1
+    fi
+  fi
+}

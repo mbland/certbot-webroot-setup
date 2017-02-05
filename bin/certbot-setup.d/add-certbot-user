@@ -1,0 +1,28 @@
+#! /usr/bin/env bash
+#
+# Adds the `certbot` user on your system if not already present
+
+_cws.add_certbot_user() {
+  @go.printf 'Adding "certbot" user...\n'
+  _cws.detect_system
+
+  case "$CERTBOT_OS" in
+  Linux)
+    sudo useradd -m -s "$BASH" certbot
+    ;;
+  macOS)
+    #dscl . -create "$CERTBOT_HOME"
+    #dscl . -create "$CERTBOT_HOME" UserShell "$BASH"
+    #createhomedir -u certbot
+    ;;
+  esac
+
+  if [[ ! -d "$CERTBOT_HOME" ]]; then
+    @go.printf '%s' 'Please see your system documentation regarding how to ' \
+      'create the "certbot" user.' >&2
+    return 1
+  fi
+  @go certbot-setup setup-homedir
+}
+
+_cws.add_certbot_user

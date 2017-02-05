@@ -1,0 +1,18 @@
+#! /usr/bin/env bash
+#
+# Generates a web server configuration file for the specified certificate
+#
+# Usage:
+#   {{go}} {{cmd}} <impl> [-m max_age] [-t <trusted_file>] <cert_file>
+#     <cert_key_file> [<backup_key_file...>]
+#
+# Where:
+#   <impl>             Subcommand corresponding to web server implementation
+#   -m max_age         (Optional) Specifies the max age of the HPKP header
+#   -t trusted_file    (Optional) Trusted CA certs for OCSP stapling
+#   <cert_file>        SSL certificate to serve
+#   <cert_key_file>    Private key file used to request the certificate
+#   <backup_key_file>  (Optional) Other private keys used to generate HPKP pins
+
+. "$_GO_USE_MODULES" 'subcommands'
+@go.show_subcommands

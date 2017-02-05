@@ -1,0 +1,32 @@
+#! /usr/bin/env bash
+#
+# Generates a Certificate Signing Request
+
+_cws.csr() {
+  local config_file="$1"
+  local key_file="$2"
+  local csr_file
+
+  if ! _cws.check_has_openssl; then
+    return 1
+  elif ! _cws.check_file_accessible 'OpenSSL configuration' "$config_file"; then
+    return 1
+  elif ! _cws.check_file_accessible 'Private key' "$key_file"; then
+    return 1
+  fi
+
+  csr_file="${key_file%.*}.csr"
+
+  if [[ -f "$csr_file" ]]; then
+    @go.printf '%s' "Certificate Signing Request $csr_file already exists. " \
+      $'Please remove it or back it up before continuing.\n' >&2
+    return 1
+  fi
+
+  @go.printf 'Creating %s\n  using config %s\n  and key %s...\n' \
+    "Certificate Signing Request $csr_file" "$config_file" "$key_file"
+  openssl req -new -sha256 -config "$config_file" -key "$key_file" \
+    -out "$csr_file"
+}
+
+_cws.csr "$@"

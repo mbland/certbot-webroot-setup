@@ -1,0 +1,115 @@
+#! /usr/bin/env bash
+#
+# Generates an HPKP header string from a list of private key files
+#
+# Usage:
+#   {{go}} {{cmd}} [-m max_age] <key_cert_or_csr>...
+#
+# Where:
+#   -m max_age            (Optional) Specifies the 'max-age' value in seconds
+#   <key_cert_or_csr>...  Files from which to generate HPKP pins
+
+_cws.hpkp_header() {
+  local file_name
+  local max_age="$CERTBOT_HPKP_MAX_AGE"
+  local pin
+  local opt
+  local __cws_pin_files=()
+  local __cws_pins=()
+
+  while getopts 'm:' opt; do
+    case "$opt" in
+    m)
+      max_age="$OPTARG"
+      ;;
+    ?)
+      return 1
+      ;;
+    esac
+  done
+
+  if [[ ! "$max_age" =~ [1-9][0-9]* ]]; then
+    @go.printf '%s' "The max age value \"$max_age\" " \
+      $'is not a positive integer; aborting.\n' >&2
+    return 1
+  fi
+
+  shift "$((OPTIND - 1))"
+  OPTIND='0'
+  __cws_pin_files=("$@")
+
+  if [[ "$#" -eq '0' ]]; then
+    @go.printf 'No private key files specified; aborting.\n' >&2
+    return 1
+  elif [[ "$#" -eq '1' ]]; then
+    @go.printf '%s' 'More than one private key file is required ' \
+      $'to provide for backup.\n' >&2
+    return 1
+  elif ! _cws.hpkp_header_ensure_unique_key_files; then
+    return 1
+  fi
+
+  for file_name in "${__cws_pin_files[@]}"; do
+    pin="$(@go ssl-generate pubkey-hash "$file_name")"
+
+    if [[ "$?" -ne '0' ]]; then
+      return 1
+    fi
+    __cws_pins+=("$pin")
+  done
+
+  if ! _cws.hpkp_header_ensure_unique_key_pins; then
+    return 1
+  fi
+
+  printf 'pin-sha256="%s"; ' "${__cws_pins[@]}"
+  printf 'max-age=%d\n' "$max_age"
+}
+
+_cws.hpkp_header_detect_duplicates() {
+  local args=("$@")
+  local lhs
+  local rhs
+
+  if [[ "${#args[@]}" -le '1' ]]; then
+    return
+  fi
+
+  for ((rhs=1; rhs != ${#args[@]}; ++rhs)); do
+    for ((lhs=0; lhs != $rhs; ++lhs)); do
+      if [[ "${args[$lhs]}" == "${args[$rhs]}" ]]; then
+        __cws_previous_index="$lhs"
+        __cws_duplicate_index="$rhs"
+        return 1
+      fi
+    done
+  done
+}
+
+_cws.hpkp_header_ensure_unique_key_files() {
+  local __cws_previous_index
+  local __cws_duplicate_index
+
+  if ! _cws.hpkp_header_detect_duplicates "${__cws_pin_files[@]}"; then
+    args=("$@")
+    @go.printf 'The key file %s is duplicated.\n' \
+      "${__cws_pin_files[$__cws_duplicate_index]}" >&2
+    return 1
+  fi
+}
+
+_cws.hpkp_header_ensure_unique_key_pins() {
+  local __cws_previous_index
+  local __cws_duplicate_index
+
+  if ! _cws.hpkp_header_detect_duplicates "${__cws_pins[@]}"; then
+    @go.printf 'The following key or CSR files are duplicates: \n' >&2
+    @go.printf '  %s\n' "${__cws_pin_files[$__cws_previous_index]}" \
+      "${__cws_pin_files[$__cws_duplicate_index]}" >&2
+    @go.printf 'Both of them produce the pin:\n  %s\n' \
+      "${__cws_pins[$__cws_duplicate_index]}" >&2
+    return 1
+  fi
+}
+
+_cws.hpkp_header "$@"

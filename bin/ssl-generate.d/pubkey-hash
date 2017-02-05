@@ -1,0 +1,54 @@
+#! /usr/bin/env bash
+#
+# Generates the hash for a public key
+#
+# Usage:
+#   {{go}} {{cmd}} <key_cert_or_csr_file>
+#
+# Where:
+#   <key_cert_or_csr>...  File from which to generate HPKP pin
+
+_cws.pubkey_hash() {
+  local key_file="$1"
+  local file_content="$(< "$key_file")"
+
+  if ! _cws.check_has_openssl; then
+    return 1
+  fi
+
+  if ! _cws.check_file_accessible 'Private key, cert, or CSR' "$key_file"; then
+    return 1
+  elif [[ "$file_content" =~ BEGIN\ ([A-Z]+)\ PRIVATE\ KEY ]]; then
+    case "${BASH_REMATCH[1]}" in
+    RSA)
+      _cws.pubkey_hash_impl 'rsa' '-pubout'
+      ;;
+    EC)
+      _cws.pubkey_hash_impl 'ec' '-pubout'
+      ;;
+    *)
+      @go.printf '%s is not a supported private key format; aborting.\n' \
+        "${BASH_REMATCH[1]}" >&2
+      return 1
+      ;;
+    esac
+
+  elif [[ "$file_content" =~ BEGIN\ CERTIFICATE\ REQUEST ]]; then
+    _cws.pubkey_hash_impl 'req' '-pubkey' '-noout'
+
+  elif [[ "$file_content" =~ BEGIN\ CERTIFICATE ]]; then
+    _cws.pubkey_hash_impl 'x509' '-pubkey' '-noout'
+
+  else
+    @go.printf '%s %s\n' "$key_file" \
+      'does not appear to be a private key or CSR file; aborting.' >&2
+    return 1
+  fi
+}
+
+_cws.pubkey_hash_impl() {
+  openssl "$@" -in "$key_file" 2>/dev/null | openssl pkey -pubin -outform der |
+    openssl dgst -sha256 -binary | openssl enc -base64
+}
+
+_cws.pubkey_hash "$@"
