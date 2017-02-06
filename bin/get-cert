@@ -85,7 +85,6 @@ _cws.get_cert() {
     certbot_files=("$site_dir"/*"$cert_id."{crt,{,full}chain.pem})
     @go.printf 'Successfully generated certificate files for %s:\n' "$site_name"
     printf '  %s\n' "${certbot_files[@]}"
-    return
   else
     @go.printf 'Failed to generate certificate files for %s.\n' "$site_name"
     return 1
