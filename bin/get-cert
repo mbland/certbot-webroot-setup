@@ -3,19 +3,24 @@
 # Requests and installs a certificate for the specified site
 #
 # Usage:
-#   {{go}} {{cmd}} [-c config] <site_name> <cert_id>
+#   {{go}} {{cmd}} [-c config] <site_name> [<cert_id>]
 #
 # Where:
-#   -c config    Alternate certbot configuration file
-#   <site_name>  Primary hostname for your web site 
-#   <cert_id>    Name of the CSR file without directory or `.csr` extension
+#   -c config  Alternate certbot configuration file
+#   site_name  Primary hostname for your web site
+#   cert_id    (Optional) Base name of the CSR file without the `.csr` extension
+#
+# If cert_id isn't specified, the command will attempt to detect it from the CSR
+# file in `$CERTBOT_HOME/certs/<site_name>` with the lexicographically greatest
+# name.
 
 _cws.get_cert() {
   local site_name
   local site_dir
   local cert_id
   local config_path="$CERTBOT_HOME/.config/letsencrypt/cli.ini"
-  local csr
+  local csr_file
+  local le_status
   local opt
 
   while getopts 'c:' opt; do
@@ -50,22 +55,53 @@ _cws.get_cert() {
   fi
 
   cert_id="$1"
-  if [[ -z "$cert_id" ]]; then
-    @go.printf 'Assuming certificate file name is also %s.\n' "$site_name"
-    cert_id="$site_name"
-  fi
-
-  csr="$cert_dir/${cert_id}.csr"
-
-  if ! _cws.check_file_accessible 'Certificate Signing Request' "$csr"; then
+  if ! _cws.get_cert_set_cert_id_and_csr_file; then
     return 1
   fi
 
-  letsencrypt certonly -c "$config_path" --csr "$csr" \
-    --cert-path "$cert_dir/${cert_id}.crt" \
-    --chain-path "$cert_dir/${cert_id}.chain.pem" \
-    --fullchain-path "$cert_dir/${cert_id}.fullchain.pem" \
-    "${CERTBOT_GET_CERT_STAGING}" "$@"
+  letsencrypt certonly -c "$config_path" --csr "$csr_file" \
+    --cert-path "$site_dir/${cert_id}.crt" \
+    --key-path "$site_dir/${cert_id}.key" \
+    --chain-path "$site_dir/${cert_id}.chain.pem" \
+    --fullchain-path "$site_dir/${cert_id}.fullchain.pem" \
+    "$@"
+  le_status="$?"
+
+  if [[ "$le_status" -eq '0' ]]; then
+    @go.printf 'Successfully generated certificate files for %s:\n' "$site_name"
+    printf '  %s\n' "$site_dir/$cert_id."{crt,key,{,full}chain.pem}
+  else
+    @go.printf 'Failed to generate certificate files for %s.\n' "$site_name"
+  fi
+  return "$le_status"
+}
+
+# If cert_id is null, will attempt to detect it from the CSR file in `site_dir`
+# with the lexicographically greatest name.
+_cws.get_cert_set_cert_id_and_csr_file() {
+  local csrs=()
+
+  if [[ -n "$cert_id" ]]; then
+    csr_file="$site_dir/${cert_id}.csr"
+  else
+    csrs=("$site_dir"/*.csr)
+
+    if [[ "${csrs[0]}" == "$site_dir/*.csr" ]]; then
+      @go.printf 'No Certficiate Signing Requests found in %s.\n' \
+        "$site_dir" >&2
+      return 1
+    fi
+    csr_file="${csrs[$((${#csrs[@]} - 1))]}"
+    cert_id="${csr_file##*/}"
+    cert_id="${cert_id%.csr}"
+  fi
+
+  @go.printf 'Using Certificate Signing Request file: %s\n' "$csr_file"
+
+  if ! _cws.check_file_accessible 'Certificate Signing Request' \
+    "$csr_file"; then
+    return 1
+  fi
 }
 
 _cws.get_cert "$@"
