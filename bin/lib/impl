@@ -152,6 +152,12 @@ _cws.setup_private_key() {
     fi
   fi
 
+  if [[ "${key_file##*.}" != 'key' ]]; then
+    @go.printf "Key file %s doesn't end with \".key\"; aborting.\n" \
+      "$key_file" >&2
+    return 1
+  fi
+
   if [[ ! -e "$key_file" ]] && ! @go ssl-generate private-key "$key_file"; then
     return 1
   fi

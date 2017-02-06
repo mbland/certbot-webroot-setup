@@ -48,6 +48,8 @@ _cws.site_setup() {
     return 1
   elif ! @go ssl-generate csr "$openssl_config" "$key_file" "$csr_file"; then
     return 1
+  elif ! _cws.site_setup_copy_private_key; then
+    return 1
   fi
 
   @go.printf '\nSite setup for %s complete.\n' "$site_name"
@@ -96,6 +98,30 @@ _cws.site_setup_config_openssl() {
 
   @go "$this_cmd" config-openssl "$openssl_config" "$site_name" \
     "$email_address" "${alt_names[@]}"
+}
+
+_cws.site_setup_copy_private_key() {
+  local key_file_target="$site_dir/${key_file##*/}"
+
+  if [[ "$key_file" != "$key_file_target" ]]; then
+    @go.printf 'Making copy of %s as %s...' "$key_file" "$key_file_target"
+
+    if ! cp "$key_file" "$key_file_target"; then
+      @go.printf 'Failed to copy %s to %s.\n' "$key_file" "$key_file_target" >&2
+      return 1
+    fi
+  fi
+
+  key_file="$key_file_target"
+  @go.printf 'Making %s accessible only by root...' "$key_file"
+
+  if ! sudo chmod 400 "$key_file"; then
+    @go.printf 'Failed to set permissions for %s to 400.\n' "$key_file" >&2
+    return 1
+  elif ! sudo chown root:root "$key_file"; then
+    @go.printf 'Failed to set ownership of %s to root:root.\n' "$key_file" >&2
+    return 1
+  fi
 }
 
 _cws.site_setup "$@"
