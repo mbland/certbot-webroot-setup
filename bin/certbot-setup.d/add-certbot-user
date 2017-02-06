@@ -9,6 +9,7 @@ _cws.add_certbot_user() {
   case "$CERTBOT_OS" in
   Linux)
     sudo useradd -m -s "$BASH" certbot
+    sudo passwd -d certbot
     ;;
   macOS)
     #dscl . -create "$CERTBOT_HOME"

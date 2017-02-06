@@ -3,16 +3,20 @@
 # Creates `certbot` home directories and the `certbot` configuration file
 
 _cws.setup_homedir() {
+  local ownership="certbot:${GROUPS[0]}"
+
   if [[ ! -d "$CERTBOT_HOME" ]]; then
     @go certbot-setup add-certbot-user
     return
+  elif ! sudo chown "$ownership" "$CERTBOT_HOME"; then
+    return 1
   elif ! sudo chmod 750 "$CERTBOT_HOME"; then
     return 1
   elif ! _cws.create_certbot_home_dirs; then
     return 1
   elif ! _cws.create_certbot_config; then
     return 1
-  elif ! sudo chown -R certbot:certbot "$CERTBOT_HOME"; then
+  elif ! sudo chown -R "$ownership" "$CERTBOT_HOME"; then
     return 1
   fi
 }
@@ -46,8 +50,12 @@ _cws.create_certbot_config() {
   local key_size
   local email_address
 
+  if [[ -f "$CERTBOT_CONFIG" ]]; then
+    return
+  fi
+
   @go.printf "Creating certbot configuration at $CERTBOT_CONFIG..."
-  @go.printf "What RSA key size would you like to use? (default: %d) > " \
+  @go.printf 'What RSA key size would you like to use? (default: %d)\n' \
     "$CERTBOT_RSA_KEY_SIZE" >&2
   read key_size
 
@@ -60,7 +68,7 @@ _cws.create_certbot_config() {
     return 1
   fi
 
-  @go.printf "What email address would you like to use? > " >&2
+  @go.printf 'What email address would you like to use?\n' >&2
   read email_address
 
   if [[ -z "$email_address" ]]; then
@@ -83,9 +91,13 @@ _cws.create_certbot_config() {
     "logs-dir = $CERTBOT_HOME/logs"
   )
 
-  if ! sudo printf '%s\n' -- "${config_template[@]}" >"$CERTBOT_CONFIG"; then
+  if ! printf '%s\n' "${config_template[@]}" >'tmp-certbot-cfg'; then
+    @go.printf 'Failed to create tmp-certbot-cfg file; aborting.\n' >&2
     return 1
-  elif ! sudo chmod 600 certbot "$CERTBOT_CONFIG"; then
+  elif ! sudo mv 'tmp-certbot-cfg' "$CERTBOT_CONFIG"; then
+    @go.printf 'Failed to create %s; aborting.\n' "$CERTBOT_CONFIG" >&2
+    return 1
+  elif ! sudo chmod 600 "$CERTBOT_CONFIG"; then
     return 1
   fi
 }
