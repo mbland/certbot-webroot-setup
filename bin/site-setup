@@ -3,13 +3,13 @@
 # Creates the directories and configuration for the specified site
 #
 # Usage:
-#   {{go}} {{cmd}} [<site_name> <key_file> <email_address> <alt_names>...]
+#   {{go}} {{cmd}} [<site_name> <key_file> <email_address> <alt_name>...]
 #
 # Where:
 #   site_name      Canonical hostname for the web site
 #   key_file       Name of the private key used to generate the CSR
 #   email_address  Email address to include in the certificate
-#   alt_names      One or more alternative host names to include in the CSR
+#   alt_name       One or more alternative host names to include in the CSR
 #
 # This will create `/home/certbot/certs/<site_name>` if it doesn't exist, and
 # add the OpenSSL config and Certificate Signing Request to it. It may be also
@@ -36,9 +36,7 @@ _cws.site_setup() {
   local openssl_config
   local csr_file
 
-  if ! _cws.site_setup_site_dir "$site_dir"; then
-    return 1
-  elif ! _cws.site_setup_private_key; then
+  if ! _cws.setup_site_dir_and_private_key; then
     return 1
   fi
 
@@ -57,46 +55,6 @@ _cws.site_setup() {
   @go.printf 'OpenSSL configuration:       %s\n' "$openssl_config"
   @go.printf 'Private key:                 %s\n' "$key_file"
   @go.printf 'Certificate Signing Request: %s\n' "$csr_file"
-}
-
-_cws.site_setup_site_dir() {
-  local ownership="certbot:${GROUPS[0]}"
-
-  if [[ -z "$site_name" ]]; then
-    if ! _cws.prompt_for_input 'site_name' \
-      'What is the primary host name of your web site? ' \
-      'Site name not specified; aborting.'; then
-      return 1
-    fi
-  fi
-
-  site_dir="$CERTBOT_HOME/certs/$site_name"
-
-  if [[ -d "$site_dir" ]]; then
-    return
-  elif ! mkdir -m 770 "$site_dir"; then
-    @go.printf 'Failed to make site directory %s.\n' "$site_dir" >&2
-    return 1
-  elif ! sudo chown "$ownership" "$site_dir"; then
-    @go.printf 'Failed to set ownership of %s to %s.\n' "$site_dir" \
-      "$ownership" >&2
-    return 1
-  fi
-}
-
-_cws.site_setup_private_key() {
-  if [[ -z "$key_file" ]]; then
-    prompt=('What private key file would you like to use for the'
-      "certificate? (This file will be generated if it doesn't exist.) ")
-    if ! _cws.prompt_for_input 'key_file' "${prompt[*]}" \
-      'Private key not specified; aborting.'; then
-      return 1
-    fi
-  fi
-
-  if [[ ! -e "$key_file" ]] && ! @go ssl-generate private-key "$key_file"; then
-    return 1
-  fi
 }
 
 _cws.site_setup_config_openssl() {

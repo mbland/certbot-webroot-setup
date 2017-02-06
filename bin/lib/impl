@@ -102,3 +102,47 @@ _cws.prompt_for_yes_or_no() {
   read response
   [[ "$response" =~ ^[[:space:]]*[Yy]([Ee][Ss])?[[:space:]]*$ ]]
 }
+
+_cws.setup_site_dir_and_private_key() {
+  _cws.setup_site_dir && _cws.setup_private_key
+}
+
+_cws.setup_site_dir() {
+  local ownership="certbot:${GROUPS[0]}"
+
+  if [[ -z "$site_name" ]]; then
+    if ! _cws.prompt_for_input 'site_name' \
+      'What is the primary host name of your web site? ' \
+      'Site name not specified; aborting.'; then
+      return 1
+    fi
+  fi
+
+  site_dir="$CERTBOT_HOME/certs/$site_name"
+
+  if [[ -d "$site_dir" ]]; then
+    return
+  elif ! mkdir -m 770 "$site_dir"; then
+    @go.printf 'Failed to make site directory %s.\n' "$site_dir" >&2
+    return 1
+  elif ! sudo chown "$ownership" "$site_dir"; then
+    @go.printf 'Failed to set ownership of %s to %s.\n' "$site_dir" \
+      "$ownership" >&2
+    return 1
+  fi
+}
+
+_cws.setup_private_key() {
+  if [[ -z "$key_file" ]]; then
+    prompt=('What private key file would you like to use for the'
+      "certificate? (This file will be generated if it doesn't exist.) ")
+    if ! _cws.prompt_for_input 'key_file' "${prompt[*]}" \
+      'Private key not specified; aborting.'; then
+      return 1
+    fi
+  fi
+
+  if [[ ! -e "$key_file" ]] && ! @go ssl-generate private-key "$key_file"; then
+    return 1
+  fi
+}

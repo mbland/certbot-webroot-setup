@@ -3,12 +3,7 @@
 # Runs all of the `certbot` setup commands
 #
 # Usage:
-#   {{go}} {{cmd}} [<site_name> <key_file> <email_address>]
-#
-# Where:
-#   site_name      Canonical host name for the web site
-#   key_file       Name of the private key used to generate the CSR
-#   email_address  Email address to include in the certificate
+#   {{go}} {{cmd}} [<site_name> <key_file> <email_address> <alt_name>...]
 #
 # This will run all of the following:
 #
@@ -16,9 +11,9 @@
 #   {{go}} site-setup
 #   {{go}} get-cert
 #
-# All arguments are optional, as the user will be prompted to enter the
-# necessary information as needed. See `{{go}} help site-setup` for more
-# information.
+# The arguments are the same as those for `{{go}} site-setup`, and they are all
+# optional, as the user will be prompted to enter the necessary information as
+# needed. See `{{go}} help site-setup` for more information.
 #
 # If successful, you can then run {{go}} webserver-config to generate a
 # configuration file for your web server that makes use of the new certificate
@@ -28,13 +23,21 @@ _cws.setup_all() {
   local site_name="$1"
   local key_file="$2"
   local email_address="$3"
+  local alt_names=("${@:4}")
+  local cert_id
 
   if ! @go certbot-setup; then
     return 1
-  elif ! @go site-setup "$site_name" "$key_file" "$email_address"; then
+  elif ! _cws.setup_site_dir_and_private_key; then
+    return 1
+  elif ! @go site-setup "$site_name" "$key_file" "$email_address" \
+    "${alt_names[@]}"; then
     return 1
   fi
-  @go get-cert "$site_name" "$site_name"
+
+  cert_id="${key_file%.*}"
+  cert_id="${cert_id##*/}"
+  @go get-cert "$site_name" "$cert_id"
 }
 
 _cws.setup_all "$@"
