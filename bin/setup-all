@@ -3,10 +3,11 @@
 # Runs all of the `certbot` setup commands
 #
 # Usage:
-#   {{go}} {{cmd}} <site_name>
+#   {{go}} {{cmd}} <site_name> <email_address>
 #
 # Where:
-#   <site_name>  Canonical host name of your web site
+#   <site_name>      Canonical host name of your web site
+#   <email_address>  Email address to contain in the certificate
 #
 # This will run all of the following:
 #
@@ -19,9 +20,13 @@
 # and associated artifacts.
 
 _cws.setup_all() {
+  local site_name="$1"
+  local email_address="$2"
+  local key_file="${3:-$site_name.key}"
+
   if ! @go certbot-setup; then
     return 1
-  elif ! @go site-setup "$site_name"; then
+  elif ! @go site-setup "$site_name" "$email_address" "$key_file"; then
     return 1
   fi
   @go get-cert "$site_name" "$site_name"

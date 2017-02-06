@@ -6,11 +6,12 @@ _cws.site_setup() {
   local site_name="$1"
   local email_address="$2"
   local key_file="$3"
-  local alt_names+=("${@:4}")
+  local alt_names=("${@:4}")
   local alt_name
   local site_dir
   local cert_id
   local openssl_config
+  local this_cmd="${BASH_SOURCE[0]##*/}"
 
   if [[ -z "$site_name" ]]; then
     if ! _cws.prompt_for_input 'site_name' \
@@ -51,9 +52,15 @@ _cws.site_setup() {
   site_dir="$CERTBOT_HOME/certs/$site_name"
   openssl_config="$site_dir/openssl.cnf"
 
-  if [[ ! -d "$site_dir" ]] && ! mkdir -m 750 "$site_dir"; then
-    return 1 
-  elif ! @go "${_GO_CMD_NAME[@]}" config-openssl "$openssl_config" \
+  if [[ ! -d "$site_dir" ]]; then
+    if ! mkdir -m 770 "$site_dir"; then
+      return 1
+    elif ! sudo chown "certbot:${GROUPS[0]}" "$site_dir"; then
+      return 1
+    fi
+  fi
+
+  if ! @go "$this_cmd" config-openssl "$openssl_config" \
     "$site_name" "$email_address" "${alt_names[@]}"; then
     return 1
   elif [[ ! -e "$key_file" ]] && \

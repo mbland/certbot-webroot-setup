@@ -42,6 +42,8 @@ _cws.create_certbot_home_dirs() {
 
   if ! sudo mkdir -m 750 "${certbot_dirs[@]}"; then
     return 1
+  elif ! sudo chmod 770 "$CERTBOT_HOME/certs"; then
+    return 1
   fi
 }
 

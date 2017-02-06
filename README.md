@@ -44,7 +44,7 @@ To try to install `certbot`, generate a private key and Certificate Signing
 Request, and fetch a Let's Encrypt certificate all at once:
 
 ```bash
-$ cws setup-all my-site.com
+$ cws setup-all my-site.com me@mysite.com
 ```
 
 If instead you want to take things step-by-step, you can run individual commands
