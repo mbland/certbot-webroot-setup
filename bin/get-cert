@@ -23,6 +23,12 @@ _cws.get_cert() {
   local le_status
   local opt
 
+  if [[ -z "$CERTBOT_CMD" ]] && ! _cws.pick_certbot_cmd; then
+    @go.printf '%s' 'certbot command not found; please run ' \
+      "\`$_GO_CMD certbot-setup install-certbot\`, then try again."$'\n' >&2
+    return 1
+  fi
+
   while getopts 'c:' opt; do
     case "$opt" in
     c)
@@ -59,12 +65,11 @@ _cws.get_cert() {
     return 1
   fi
 
-  letsencrypt certonly -c "$config_path" --csr "$csr_file" \
+  "${CERTBOT_CMD}" certonly -c "$config_path" --csr "$csr_file" \
     --cert-path "$site_dir/${cert_id}.crt" \
-    --key-path "$site_dir/${cert_id}.key" \
     --chain-path "$site_dir/${cert_id}.chain.pem" \
     --fullchain-path "$site_dir/${cert_id}.fullchain.pem" \
-    "$@"
+    --staple-ocsp --dry-run "$@"
   le_status="$?"
 
   if [[ "$le_status" -eq '0' ]]; then
