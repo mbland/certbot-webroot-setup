@@ -79,8 +79,7 @@ _cws.get_cert() {
     '--cert-path' "$site_dir/${cert_id}.crt"
     '--key-path' "$site_dir/${cert_id}.key"
     '--chain-path' "$site_dir/${cert_id}.chain.pem"
-    '--fullchain-path' "$site_dir/${cert_id}.fullchain.pem"
-    "$@")
+    '--fullchain-path' "$site_dir/${cert_id}.fullchain.pem")
 
   if "${certbot_cmd[@]}" ; then
     certbot_files=("$site_dir"/*"$cert_id."{crt,{,full}chain.pem})
