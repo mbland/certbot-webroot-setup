@@ -35,12 +35,12 @@ _cws.webserver_config_parse_args() {
   __cws_cert_key="$2"
   shift 2
  
-  if ! _cws.check_file_accessible 'Certificate' "$__cws_cert_file"; then
+  if ! _cws.check_file_exists 'Certificate' "$__cws_cert_file"; then
     return 1
-  elif ! _cws.check_file_accessible 'Certificate key' "$__cws_cert_key"; then
+  elif ! _cws.check_file_exists 'Certificate key' "$__cws_cert_key"; then
     return 1
   elif [[ -n "$__cws_trusted_certs" ]] && \
-    ! _cws.check_file_accessible 'Trusted CA certs' "$__cws_trusted_certs"; then
+    ! _cws.check_file_exists 'Trusted CA certs' "$__cws_trusted_certs"; then
     return 1
   fi
 

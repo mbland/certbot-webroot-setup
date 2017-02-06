@@ -54,14 +54,24 @@ _cws.check_file_accessible() {
   local file_path="$2"
   local file_desc="$file_type file $file_path"
 
+  if ! _cws.check_file_exists "$file_type" "$file_path"; then
+    return 1
+  elif [[ ! -r "$file_path" ]]; then
+    @go.printf "$file_desc isn't readable.\n" >&2
+    return 1
+  fi
+}
+
+_cws.check_file_exists() {
+  local file_type="$1"
+  local file_path="$2"
+  local file_desc="$file_type file $file_path"
+
   if [[ -z "$file_path" ]]; then
     @go.printf "$file_type file not specified.\n" >&2
     return 1
   elif [[ ! -f "$file_path" ]]; then
     @go.printf "$file_desc doesn't exist or isn't a regular file.\n" >&2
-    return 1
-  elif [[ ! -r "$file_path" ]]; then
-    @go.printf "$file_desc isn't readable.\n" >&2
     return 1
   fi
 }
