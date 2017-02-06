@@ -86,3 +86,19 @@ _cws.prompt_for_input() {
   fi
   printf -v "$1" -- '%s' "$__cws_pfi_response"
 }
+
+# Prompts the user for a yes or no response
+#
+# Arguments:
+#   prompt  Text prompt for user input; ' (default no) ' will be appended
+#
+# Returns:
+#   Zero on 'y' or 'yes' (case- and space- insensitive), nonzero otherwise
+_cws.prompt_for_yes_or_no() {
+  local response
+
+  # When @go.printf is updated to not always add a newline, use it here.
+  printf '%s (default no) ' "$1" >&2
+  read response
+  [[ "$response" =~ ^[[:space:]]*[Yy]([Ee][Ss])?[[:space:]]*$ ]]
+}

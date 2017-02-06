@@ -49,29 +49,31 @@ _cws.create_certbot_home_dirs() {
 
 _cws.create_certbot_config() {
   local config_template=()
+  local prompt
   local key_size
   local email_address
 
   if [[ -f "$CERTBOT_CONFIG" ]]; then
-    return
+    prompt="$CERTBOT_CONFIG already exists. Would you like to update it?"
+    if ! _cws.prompt_for_yes_or_no "$prompt"; then
+      return
+    fi
+  else
+    @go.printf 'Creating certbot configuration at %s...\n' "$CERTBOT_CONFIG"
   fi
 
-  @go.printf "Creating certbot configuration at $CERTBOT_CONFIG..."
-  @go.printf 'What RSA key size would you like to use? (default: %d)\n' \
-    "$CERTBOT_RSA_KEY_SIZE" >&2
-  read key_size
+  prompt=('What RSA key size would you like to use? '
+    "(default: $CERTBOT_RSA_KEY_SIZE) ")
+  _cws.prompt_for_input 'key_size' "${prompt[*]}"
+  key_size="${key_size:-$CERTBOT_RSA_KEY_SIZE}"
 
-  if [[ -z "$key_size" ]]; then
-    @go.printf 'Using default RSA key size %d.\n\n' "$CERTBOT_RSA_KEY_SIZE" >&2
-    key_size="$CERTBOT_RSA_KEY_SIZE"
-  fi
   if [[ ! "$key_size" =~ [1-9][0-9]+ ]]; then
     @go.printf 'The RSA key size must be a positive integer. Aborting.\n' >&2
     return 1
   fi
 
-  @go.printf 'What email address would you like to use?\n' >&2
-  read email_address
+  prompt='What email address would you like to use? '
+  _cws.prompt_for_input 'email_address' "$prompt"
 
   if [[ -z "$email_address" ]]; then
     @go.printf 'No email address specified. Aborting.\n' &2

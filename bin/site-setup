@@ -87,7 +87,7 @@ _cws.site_setup_site_dir() {
 _cws.site_setup_private_key() {
   if [[ -z "$key_file" ]]; then
     prompt=('What private key file would you like to use for the'
-      "certificate? (This file will be generated if it doens't exist.) ")
+      "certificate? (This file will be generated if it doesn't exist.) ")
     if ! _cws.prompt_for_input 'key_file' "${prompt[*]}" \
       'Private key not specified; aborting.'; then
       return 1
@@ -107,15 +107,11 @@ _cws.site_setup_config_openssl() {
   local alt_name
   local prompt
   local response
-  local yes_pattern='^[[:space:]]*[Yy]([Ee][Ss])?[[:space:]]*$'
   local this_cmd="${BASH_SOURCE[0]##*/}"
 
   if [[ -f "$openssl_config" ]]; then
-    prompt=("$openssl_config already exists."
-      'Would you like to update it? (default no) ')
-    _cws.prompt_for_input 'response' "${prompt[*]}"
-
-    if [[ ! "$response" =~ $yes_pattern ]]; then
+    prompt="$openssl_config already exists. Would you like to update it?"
+    if ! _cws.prompt_for_yes_or_no "$prompt"; then
       return
     fi
   fi
