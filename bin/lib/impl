@@ -75,7 +75,8 @@ _cws.check_file_accessible() {
 _cws.prompt_for_input() {
   local __cws_pfi_response
 
-  @go.printf '%s\n' "$2" >&2
+  # When @go.printf is updated to not always add a newline, use it here.
+  printf '%s' "$2" >&2
   read __cws_pfi_response
   __cws_pfi_response="${__cws_pfi_response%$'\r'}"
 

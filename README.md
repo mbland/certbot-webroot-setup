@@ -53,7 +53,7 @@ such as the following:
 ```bash
 $ cws certbot-setup
 $ cws ssl-generate private-key my-site.com.key
-$ cws site-setup my-site.com me@my-site.com my-site.com.key
+$ cws site-setup my-site.com my-site.com.key me@my-site.com
 $ cws get-cert my-site.com
 ```
 

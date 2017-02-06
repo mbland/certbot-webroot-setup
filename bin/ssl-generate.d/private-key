@@ -18,19 +18,19 @@ _cws.private_key() {
     return 1
   elif [[ -z "$encryption" ]]; then
     if ! _cws.prompt_for_input 'encryption' \
-      'Would you like to use "rsa" or "ec" encryption for the private key?' \
+      'Would you like to use "rsa" or "ec" encryption for the private key? ' \
       'No encryption scheme specified; aborting.'; then
       return 1
     fi
     case "$encryption" in
     rsa)
       _cws.prompt_for_input 'parameter' \
-        "What key size would you like to use? (default $CERTBOT_RSA_KEY_SIZE)"
+        "What key size would you like to use? (default $CERTBOT_RSA_KEY_SIZE) "
       parameter="${parameter:-$CERTBOT_RSA_KEY_SIZE}"
       ;;
     ec)
       _cws.prompt_for_input 'parameter' \
-        "What curve would you like to use? (default $CERTBOT_EC_CURVE_NAME)"
+        "What curve would you like to use? (default $CERTBOT_EC_CURVE_NAME) "
       parameter="${parameter:-$CERTBOT_EC_CURVE_NAME}"
       ;;
     *)

@@ -5,7 +5,7 @@
 _cws.csr() {
   local config_file="$1"
   local key_file="$2"
-  local csr_file
+  local csr_file="${3:-${key_file%.*}.csr}"
 
   if ! _cws.check_has_openssl; then
     return 1
@@ -14,8 +14,6 @@ _cws.csr() {
   elif ! _cws.check_file_accessible 'Private key' "$key_file"; then
     return 1
   fi
-
-  csr_file="${key_file%.*}.csr"
 
   if [[ -f "$csr_file" ]]; then
     @go.printf '%s' "Certificate Signing Request $csr_file already exists. " \
