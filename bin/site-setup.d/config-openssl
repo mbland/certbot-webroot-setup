@@ -8,7 +8,7 @@ _cws.config_openssl() {
   local email_address="$3"
   local alt_names=("$common_name" "${@:4}")
   local openssl_config=()
-  local begin_state_pattern='^\[ ([a-z0-9_]+) \]$'
+  local begin_state_pattern='^\[[[:space:]]([[:alnum:]_]+)[[:space:]]\]$'
   local state
   local req_extensions_set
   local cn_default_set
@@ -28,17 +28,15 @@ _cws.config_openssl() {
 
   while IFS= read -r line; do
     line="${line%$'\r'}"
-    if [[ -n "$line" ]]; then
+    if [[ "$line" =~ $begin_state_pattern ]]; then
+      _cws.config_openssl_end_state
+      state="${BASH_REMATCH[1]}"
+    else
       case "$state" in
-      '')
-        if [[ "$line" =~ $begin_state_pattern ]]; then
-          state="${BASH_REMATCH[1]}"
-        fi
-        ;;
       req)
-        if [[ "$line" =~ req_extensions\ =\ v3_req ]]; then
-          if [[ "${line:0:1}" == '#' ]]; then
-            line="${line:1}"
+        if [[ "$line" =~ req_extensions[[:space:]]*=[[:space:]]*v3_req ]]; then
+          if [[ "$line" =~ \#[[:space:]]* ]]; then
+            line="${line#${BASH_REMATCH[0]}}"
           fi
           req_extensions_set='true'
         fi
@@ -64,9 +62,6 @@ _cws.config_openssl() {
         continue
         ;;
       esac
-    else
-      _cws.config_openssl_end_state
-      state=''
     fi
     openssl_config+=("$line")
   done <"$openssl_config_file"
@@ -76,6 +71,8 @@ _cws.config_openssl() {
 }
 
 _cws.config_openssl_end_state() {
+  local config_size="${#openssl_config[@]}"
+
   case "$state" in
   req)
     if [[ -z "$req_extensions_set" ]]; then
@@ -92,13 +89,17 @@ _cws.config_openssl_end_state() {
     ;;
   v3_req)
     if [[ -z "$subject_alt_name_set" ]]; then
-      openssl_config+=("subjectAltName = @alt_names")
+      openssl_config+=('subjectAltName = @alt_names')
     fi
     ;;
   alt_names)
     _cws.config_openssl_alt_names
     ;;
   esac
+
+  if [[ "${#openssl_config[@]}" -ne "$config_size" ]]; then
+    openssl_config+=('')
+  fi
 }
 
 _cws.config_openssl_finish() {
