@@ -63,6 +63,8 @@ _cws.get_cert() {
   cert_id="$1"
   if ! _cws.get_cert_set_cert_id_and_csr_file; then
     return 1
+  elif ! _cws.get_cert_check_for_key_file "$csr_file"; then
+    return 1
   fi
 
   certbot_cmd=("$CERTBOT_CMD" 'certonly' '-c' "$config_path" '--csr' "$csr_file"
@@ -105,6 +107,15 @@ _cws.get_cert_set_cert_id_and_csr_file() {
 
   if ! _cws.check_file_accessible 'Certificate Signing Request' \
     "$csr_file"; then
+    return 1
+  fi
+}
+
+_cws.get_cert_check_for_key_file() {
+  local key_file="${1%.csr}.key"
+
+  if [[ ! -f "$key_file" ]]; then
+    @go.printf 'There is no %s file to match the CSR file.\n' "$key_file" >&2
     return 1
   fi
 }
