@@ -21,6 +21,7 @@ _cws.get_cert() {
   local config_path="$CERTBOT_HOME/.config/letsencrypt/cli.ini"
   local csr_file
   local certbot_cmd=()
+  local certbot_files=()
   local opt
 
   if [[ -z "$CERTBOT_CMD" ]] && ! _cws.pick_certbot_cmd; then
@@ -72,15 +73,21 @@ _cws.get_cert() {
     '--key-path' "$site_dir/${cert_id}.key"
     '--chain-path' "$site_dir/${cert_id}.chain.pem"
     '--fullchain-path' "$site_dir/${cert_id}.fullchain.pem"
-    '--staple-ocsp' "$@" '--dry-run')
+    '--staple-ocsp' '--dry-run' "$@")
 
   if "${certbot_cmd[@]}" ; then
+    certbot_files=("$site_dir"/*"$cert_id."{crt,{,full}chain.pem})
     @go.printf 'Successfully generated certificate files for %s:\n' "$site_name"
-    printf '  %s\n' "$site_dir/$cert_id."{crt,key,{,full}chain.pem}
+    printf '  %s\n' "${certbot_files[@]}"
   else
     @go.printf 'Failed to generate certificate files for %s.\n' "$site_name"
     return 1
   fi
+
+  if ! _cws.get_cert_set_permissions_and_ownership; then
+    return 1
+  fi
+  @go.printf 'Certificate update complete.'
 }
 
 # If cert_id is null, will attempt to detect it from the CSR file in `site_dir`
@@ -116,6 +123,21 @@ _cws.get_cert_check_for_key_file() {
 
   if [[ ! -f "$key_file" ]]; then
     @go.printf 'There is no %s file to match the CSR file.\n' "$key_file" >&2
+    return 1
+  fi
+}
+
+_cws.get_cert_set_permissions_and_ownership() {
+  @go.printf 'Setting ownership and permissions for certbot files...\n'
+
+  if ! chmod 640 "${certbot_files[@]}"; then
+    @go.printf 'Failed to set permissions on cert files to 640.\n' >&2
+    return 1
+  fi
+
+  if [[ "$USER" != 'certbot' ]] && \
+    ! sudo chown certbot "${certbot_files[@]}"; then
+    @go.printf 'Failed to set ownership on cert files to certbot.\n' >&2
     return 1
   fi
 }
