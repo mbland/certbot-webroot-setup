@@ -40,9 +40,7 @@ _cws.create_certbot_home_dirs() {
   @go.printf 'Creating the following directories:\n'
   @go.printf '  %s\n' "${certbot_dirs[@]}"
 
-  if ! sudo mkdir -m 750 "${certbot_dirs[@]}"; then
-    return 1
-  elif ! sudo chmod 770 "$CERTBOT_HOME/certs"; then
+  if ! sudo mkdir -m 770 "${certbot_dirs[@]}"; then
     return 1
   fi
 }
