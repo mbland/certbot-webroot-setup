@@ -45,7 +45,7 @@ _cws.webserver_config_parse_args() {
   fi
 
   if [[ "${#hpkp_args[@]}" -ne '0' || "$#" -ne '0' ]]; then
-    hpkp_args+=("$__cws_cert_key" "$@")
+    hpkp_args+=("${__cws_cert_key/%.key/.csr}" "$@")
     __cws_hpkp_header="$(@go ssl-generate hpkp-header "${hpkp_args[@]}")"
 
     if [[ "$?" -ne '0' ]]; then
