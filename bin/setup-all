@@ -3,11 +3,12 @@
 # Runs all of the `certbot` setup commands
 #
 # Usage:
-#   {{go}} {{cmd}} <site_name> <email_address>
+#   {{go}} {{cmd}} [<site_name> <key_file> <email_address>]
 #
 # Where:
-#   <site_name>      Canonical host name of your web site
-#   <email_address>  Email address to contain in the certificate
+#   site_name      Canonical host name for the web site
+#   key_file       Name of the private key used to generate the CSR
+#   email_address  Email address to include in the certificate
 #
 # This will run all of the following:
 #
@@ -15,18 +16,22 @@
 #   {{go}} site-setup
 #   {{go}} get-cert
 #
+# All arguments are optional, as the user will be prompted to enter the
+# necessary information as needed. See `{{go}} help site-setup` for more
+# information.
+#
 # If successful, you can then run {{go}} webserver-config to generate a
 # configuration file for your web server that makes use of the new certificate
 # and associated artifacts.
 
 _cws.setup_all() {
   local site_name="$1"
-  local email_address="$2"
-  local key_file="${3:-$site_name.key}"
+  local key_file="$2"
+  local email_address="$3"
 
   if ! @go certbot-setup; then
     return 1
-  elif ! @go site-setup "$site_name" "$email_address" "$key_file"; then
+  elif ! @go site-setup "$site_name" "$key_file" "$email_address"; then
     return 1
   fi
   @go get-cert "$site_name" "$site_name"
