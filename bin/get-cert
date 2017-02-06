@@ -20,6 +20,8 @@ _cws.get_cert() {
   local cert_id
   local config_path="$CERTBOT_HOME/.config/letsencrypt/cli.ini"
   local csr_file
+  local alt_names=()
+  local webroot_domains=()
   local certbot_cmd=()
   local certbot_files=()
   local opt
@@ -66,19 +68,25 @@ _cws.get_cert() {
     return 1
   elif ! _cws.get_cert_check_for_key_file "$csr_file"; then
     return 1
+  elif ! _cws.get_cert_parse_alt_names_from_csr; then
+    return 1
   fi
+  _cws.get_cert_set_webroot_domains
 
   certbot_cmd=("$CERTBOT_CMD" 'certonly' '-c' "$config_path" '--csr' "$csr_file"
+    '--webroot' '--webroot-path' "$CERTBOT_HOME/challenges"
+    "${webroot_domains[@]}"
     '--cert-path' "$site_dir/${cert_id}.crt"
     '--key-path' "$site_dir/${cert_id}.key"
     '--chain-path' "$site_dir/${cert_id}.chain.pem"
     '--fullchain-path' "$site_dir/${cert_id}.fullchain.pem"
-    '--staple-ocsp' '--dry-run' "$@")
+    '--staple-ocsp' "$@")
 
   if "${certbot_cmd[@]}" ; then
     certbot_files=("$site_dir"/*"$cert_id."{crt,{,full}chain.pem})
     @go.printf 'Successfully generated certificate files for %s:\n' "$site_name"
     printf '  %s\n' "${certbot_files[@]}"
+    return
   else
     @go.printf 'Failed to generate certificate files for %s.\n' "$site_name"
     return 1
@@ -125,6 +133,39 @@ _cws.get_cert_check_for_key_file() {
     @go.printf 'There is no %s file to match the CSR file.\n' "$key_file" >&2
     return 1
   fi
+}
+
+_cws.get_cert_parse_alt_names_from_csr() {
+  local line
+  local in_alt_names
+
+  @go.printf 'Searching for alternative names in %s...' "$csr_file"
+
+  while read -r line; do
+    line="${line%$'\r'}"
+    if [[ -n "$in_alt_names" ]]; then
+      break
+    elif [[ "$line" =~ X509v3\ Subject\ Alternative\ Name: ]]; then
+      in_alt_names='true'
+    fi
+  done < <(openssl req -in "$csr_file" -text -noout)
+
+  if [[ -z "$in_alt_names" ]]; then
+    @go.printf 'No alternative names found in CSR.\n'
+    return 1
+  fi
+
+  # Since hostnames can't contain spaces, this does what we want.
+  alt_names=($line)
+  alt_names=("${alt_names[@]#DNS:}")
+  alt_names=("${alt_names[@]%,}")
+}
+
+_cws.get_cert_set_webroot_domains() {
+  local domain
+  for domain in "${alt_names[@]}"; do
+    webroot_domains+=('-d' "$domain")
+  done
 }
 
 _cws.get_cert_set_permissions_and_ownership() {

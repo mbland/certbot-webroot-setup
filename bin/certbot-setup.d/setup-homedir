@@ -89,7 +89,6 @@ _cws.create_certbot_config() {
     'text = True'
     'non-interactive = True'
     'agree-tos = True'
-    'authenticator = webroot'
     "work-dir = $CERTBOT_HOME"
     "config-dir = $CERTBOT_HOME/config"
     "logs-dir = $CERTBOT_HOME/logs"
