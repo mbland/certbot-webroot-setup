@@ -6,7 +6,7 @@ phase](https://github.com/mbland/automated-testing-playbook/blob/master/pages/ra
 
 Source: https://github.com/mbland/certbot-webroot-setup
 
-[![License](https://img.shields.io/github/license/mbland/go-script-bash.svg)](https://github.com/mbland/go-script-bash/blob/master/LICENSE.md)
+[![License](https://img.shields.io/github/license/mbland/certbot-webroot-setup.svg)](https://github.com/mbland/certbot-webroot-setup/blob/master/LICENSE.md)
 
 This program encapsulates the steps needed to set up
 [Certbot](https://certbot.eff.org/) to use the [Webroot
